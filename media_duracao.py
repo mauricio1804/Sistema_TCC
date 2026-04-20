@@ -36,4 +36,5 @@ print(np.mean(duracao))
 
 print("Média da taxa de amostragem: \n", np.mean(taxa_amostragem))
 print("\nTaxas de amostragem: \n", taxa_amostragem)
+print("\nMédia da duração: \n", duracao)
         

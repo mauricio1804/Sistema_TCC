@@ -2,51 +2,76 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 import matplotlib.pyplot as plt
 import numpy as np
+import librosa as lb
 import os
+import sklearn as sk
+
+seed = 42
+tf.random.set_seed(seed)
+np.random.seed(seed)
 
 batch_size = 32
-img_height = 480
-img_width = 640
 
-train = tf.keras.utils.image_dataset_from_directory(
-    './Dataset/train/',
-    seed=123,
-    image_size=(img_height, img_width),
-    batch_size=batch_size,
-    label_mode='categorical'
-)
+train = []
+test = []
+validation = []
 
-validation = tf.keras.utils.image_dataset_from_directory(
-    './Dataset/validation/',
-    seed=123,
-    image_size=(img_height, img_width),
-    batch_size=batch_size,
-    label_mode='categorical'
-)
-test = tf.keras.utils.image_dataset_from_directory(
-    './Dataset/test/',
-    seed=123,
-    image_size=(img_height, img_width),
-    batch_size=batch_size,
-    label_mode='categorical'
-)
+classes = ['kick', 'snare', 'toms']
 
-class_names = train.class_names
-print(class_names)
+def melspectrogram(name_step, vector):
+    
+    for classe in classes:
+        path = './Dataset/' + name_step + '/' + classe + '/'
+        for audio in os.listdir(path):
+            if audio.endswith('.wav'):
+                y, sr = lb.load(os.path.join(path, audio), sr=None)
+                melspec = lb.feature.melspectrogram(y=y, sr=sr, n_mels=128, fmax=None, n_fft=2048, hop_length=512)
+                melspec_log = lb.power_to_db(melspec, ref=np.max)
+                vector.append((melspec_log, classe))
+                
+    return vector
+
+train = melspectrogram('train', train)
+test = melspectrogram('test', test)
+validation = melspectrogram('validation', validation)
+
+def prepare_to_dataset(melspc_vector):
+    x = []
+    y = []
+    for i, j in melspc_vector:
+        x.append(i)
+        y.append(j)
+    x = np.array(x)
+    x = x[..., np.newaxis]
+    y = np.array(y)
+    y = sk.preprocessing.LabelEncoder().fit_transform(y)
+    y = tf.keras.utils.to_categorical(y)
+    return x, y
+
+train_x, train_labels = prepare_to_dataset(train)
+validation_x, validation_labels = prepare_to_dataset(validation)
+test_x, test_labels = prepare_to_dataset(test)
+
+num_classes = train_labels.shape[1]
+
 
 AUTOTUNE = tf.data.AUTOTUNE
 
-train = train.cache().shuffle(84).prefetch(buffer_size=AUTOTUNE)
-validation = validation.cache().prefetch(buffer_size=AUTOTUNE)
-test = test.cache().prefetch(buffer_size=AUTOTUNE)
+train = tf.data.Dataset.from_tensor_slices((train_x, train_labels))
+train = train.shuffle(buffer_size=len(train_x), seed=seed).batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
+validation = tf.data.Dataset.from_tensor_slices((validation_x, validation_labels))
+validation = validation.batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
+test = tf.data.Dataset.from_tensor_slices((test_x, test_labels))
+test = test.batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
 
-num_classes = len(class_names)
+print(train.element_spec)
+
 
 norm_layer = layers.Normalization()
-norm_layer.adapt(data=train.map(lambda spec, label: spec))
-
+norm_layer.adapt(train_x)
 model = models.Sequential([
-    layers.Input(shape=(img_height, img_width, 3)),
+    layers.Input(shape=(train_x.shape[1:])),
+    layers.Resizing(32, 32),
     norm_layer,
     layers.Conv2D(16, 3, activation='relu'),
     layers.Conv2D(32, 3, activation='relu'),
@@ -118,8 +143,8 @@ plt.close()
 y_true = []
 y_pred = []
 
-for images, labels in test:
-    logits = model(images, training=False)
+for matriz, labels in test:
+    logits = model(matriz, training=False)
     predictions = tf.argmax(logits, axis=1, output_type=tf.int32)
     true_labels = tf.argmax(labels, axis=1, output_type=tf.int32)
 
@@ -136,8 +161,8 @@ confusion_mtx = cm.numpy()
 plt.figure(figsize=(10, 8))
 plt.imshow(confusion_mtx, cmap='Blues')
 plt.colorbar()
-plt.xticks(ticks=range(num_classes), labels=class_names)
-plt.yticks(ticks=range(num_classes), labels=class_names)
+plt.xticks(ticks=range(num_classes), labels=classes)
+plt.yticks(ticks=range(num_classes), labels=classes)
 for i in range(num_classes):
     for j in range(num_classes):
         plt.text(j, i, str(confusion_mtx[i, j]), ha='center', va='center', color='black')
@@ -149,5 +174,5 @@ plt.close()
 
 
 results = model.evaluate(test, return_dict=True)
-print(results)
+
 
