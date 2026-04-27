@@ -4,56 +4,87 @@ import shutil
 
 dataset_dir = './Dataset/archive'
 
-kicks_dir = os.listdir(os.path.join(dataset_dir, 'kick/'))
-snare_dir = os.listdir(os.path.join(dataset_dir, 'snare/'))
-toms_dir = os.listdir(os.path.join(dataset_dir, 'toms/'))
+classes = ['kick', 'snare', 'toms']
 
-Arquivos_kicks = [f for f in kicks_dir if f.endswith('.wav')]
-Arquivos_snare = [f for f in snare_dir if f.endswith('.wav')]
-Arquivos_toms = [f for f in toms_dir if f.endswith('.wav')]
+dir_train = './Dataset/train'
+dir_validation = './Dataset/validation'
+dir_test = './Dataset/test'
 
-def kicks (arqui):
-    k_train, K_temp = sk.model_selection.train_test_split(arqui, test_size=0.3, random_state=42)
+def list_wavs(path):
+    return [f for f in os.listdir(path) if f.endswith('.wav')]
 
-    K_vali, K_test = sk.model_selection.train_test_split(K_temp, test_size=0.5, random_state=42)
+def count_wavs(path):
+    return len(list_wavs(path))
 
-    for arquivo in k_train:
-        shutil.copy2(os.path.join(dataset_dir, 'kick/', arquivo), './Dataset/train/kick/')
-        
-    for arquivo in K_vali:
-        shutil.copy2(os.path.join(dataset_dir, 'kick/', arquivo), './Dataset/validation/kick/')
+def delete_files(folder):
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
+    os.makedirs(folder)
 
-    for arquivo in K_test:
-        shutil.copy2(os.path.join(dataset_dir, 'kick/', arquivo), './Dataset/test/kick/')
-        
-def snare (arqui):
-    S_train, S_temp = sk.model_selection.train_test_split(arqui, test_size=0.3, random_state=42)
+def verification(classe):
+    if count_wavs(os.path.join(dir_train, classe)) == 0:
+        return False
+    if count_wavs(os.path.join(dir_validation, classe)) == 0:
+        return False
+    if count_wavs(os.path.join(dir_test, classe)) == 0:
+        return False
+    return True
 
-    S_vali, S_test = sk.model_selection.train_test_split(S_temp, test_size=0.5, random_state=42)
+def division_datasets(arquivos, classe):
+    train_files, temp = sk.model_selection.train_test_split(
+        arquivos, test_size=0.3, random_state=42
+    )
+    
+    val_files, test_files = sk.model_selection.train_test_split(
+        temp, test_size=0.5, random_state=42
+    )
 
-    for arquivo in S_train:
-        shutil.copy2(os.path.join(dataset_dir, 'snare/', arquivo), './Dataset/train/snare/')
-        
-    for arquivo in S_vali:
-        shutil.copy2(os.path.join(dataset_dir, 'snare/', arquivo), './Dataset/validation/snare/')
+    for arquivo in train_files:
+        shutil.copy2(
+            os.path.join(dataset_dir, classe, arquivo),
+            os.path.join(dir_train, classe)
+        )
 
-    for arquivo in S_test:
-        shutil.copy2(os.path.join(dataset_dir, 'snare/', arquivo), './Dataset/test/snare/')
+    for arquivo in val_files:
+        shutil.copy2(
+            os.path.join(dataset_dir, classe, arquivo),
+            os.path.join(dir_validation, classe)
+        )
 
-def toms (arqui):
-    T_train, T_temp = sk.model_selection.train_test_split(arqui, test_size=0.3, random_state=42)
+    for arquivo in test_files:
+        shutil.copy2(
+            os.path.join(dataset_dir, classe, arquivo),
+            os.path.join(dir_test, classe)
+        )
 
-    T_vali, T_test = sk.model_selection.train_test_split(T_temp, test_size=0.5, random_state=42)
+def estratificacao(arquivos, classe):
+    if not verification(classe):
 
-    for arquivo in T_train:
-        shutil.copy2(os.path.join(dataset_dir, 'toms/', arquivo), './Dataset/train/toms/')
-        
-    for arquivo in T_vali:
-        shutil.copy2(os.path.join(dataset_dir, 'toms/', arquivo), './Dataset/validation/toms/')
+        print(f"\nRecriando dataset para: {classe}")
 
-    for arquivo in T_test:
-        shutil.copy2(os.path.join(dataset_dir, 'toms/', arquivo), './Dataset/test/toms/')
-        
-kicks(Arquivos_kicks)
-snare(Arquivos_snare)
-toms(Arquivos_toms)
+        delete_files(os.path.join(dir_train, classe))
+        delete_files(os.path.join(dir_validation, classe))
+        delete_files(os.path.join(dir_test, classe))
+
+        division_datasets(arquivos, classe)
+
+        print(" Concluído:")
+        print(f"Train: {count_wavs(os.path.join(dir_train, classe))}")
+        print(f"Validation: {count_wavs(os.path.join(dir_validation, classe))}")
+        print(f"Test: {count_wavs(os.path.join(dir_test, classe))}")
+
+    else:
+        print(f"\n Estratificação já realizada para {classe}")
+        print(f"Train: {count_wavs(os.path.join(dir_train, classe))}")
+        print(f"Validation: {count_wavs(os.path.join(dir_validation, classe))}")
+        print(f"Test: {count_wavs(os.path.join(dir_test, classe))}")
+
+
+dados = {
+    'kick': list_wavs(os.path.join(dataset_dir, 'kick')),
+    'snare': list_wavs(os.path.join(dataset_dir, 'snare')),
+    'toms': list_wavs(os.path.join(dataset_dir, 'toms'))
+}
+
+for classe, arquivos in dados.items():
+    estratificacao(arquivos, classe)
