@@ -5,6 +5,7 @@ import os
 
 dataset_dir = './Dataset/archive/'
 
+
 def audio_info(path):
     taxa_amostragem = []
     duracao = []
@@ -17,8 +18,9 @@ def audio_info(path):
                 duracao.append(lb.get_duration(y=y, sr=sr))
     return taxa_amostragem, duracao
 
+
 taxa_amostragem, duracao = audio_info(dataset_dir)
-        
+
 print("Média duração: ", np.mean(duracao))
 print("Mínima duração: ", np.min(duracao))
 print("Máxima duração: ", np.max(duracao))
@@ -31,4 +33,3 @@ print("Mínima taxa de amostragem: ", np.min(taxa_amostragem))
 print("Máxima taxa de amostragem: ", np.max(taxa_amostragem))
 print("Quantidade de arquivos: ", len(taxa_amostragem))
 print("\nTaxas de amostragem: \n", taxa_amostragem)
-        

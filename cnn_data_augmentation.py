@@ -31,11 +31,49 @@ def duration_care(y):
 
     duration_difference = (sample_rate * 2) - y.shape[0]
     if (duration_difference > 0):
+        print("Padding do audio com zeros para 2 seconds.")
         y = np.pad(y, (0, duration_difference), mode='constant')
     if (duration_difference < 0):
+        print("Cortando o audio para 2 seconds.")
         y = y[:sample_rate*2]
 
     return y
+
+
+def data_augmentation(name_step):
+    data_augmented = []
+    vector = []
+    for classe, valor in classes.items():
+        path = "./Dataset/" + name_step + "/" + classe + "/"
+        for audio in os.listdir(path):
+            if audio.endswith(".wav"):
+                # carregamento do áudio
+                y, sr = lb.load(os.path.join(path, audio), sr=sample_rate)
+
+                # modificação do áudio para o data augmentation
+                data_augmented.append((lb.effects.pitch_shift(
+                    y, sr=sr, n_steps=np.random.uniform(-2, 2)), valor))
+
+                y = duration_care(y)
+
+    for i, j in data_augmented:
+        melspec = lb.feature.melspectrogram(
+            y=i,
+            sr=sr,
+            n_mels=n_mels,
+            fmax=fmax,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            win_length=win_length,
+        )
+
+        # conversão para escala logarítmica
+        melspec_log = lb.power_to_db(melspec, ref=np.max)
+
+        # retorno da tupla (espectrograma de Mel, valor da classe)
+        vector.append((melspec_log, j))
+
+    return vector
 
 
 def melspectrogram(name_step, vector):
@@ -72,8 +110,30 @@ def melspectrogram(name_step, vector):
 
 
 train = melspectrogram("train", train)
+print(len(train))
+
+data_aug = data_augmentation("train")
+print(len(data_aug))
+
+print(np.array_equal(
+    train[0][0],
+    data_aug[0][0]
+))
+
+print(
+    np.array_equal(
+        train[0][1],
+        data_aug[0][1]
+    ))
+
+train.extend(data_aug)
+
+print(len(train))
+
+
 test = melspectrogram("test", test)
 validation = melspectrogram("validation", validation)
+
 
 def prepare_to_dataset(melspc_vector):
     x = []
@@ -88,6 +148,7 @@ def prepare_to_dataset(melspc_vector):
 
 
 train_x, train_labels = prepare_to_dataset(train)
+print(len(train_x), len(train_labels))
 validation_x, validation_labels = prepare_to_dataset(validation)
 test_x, test_labels = prepare_to_dataset(test)
 
@@ -160,14 +221,16 @@ plt.figure(figsize=(10, 5))
 plt.plot(history.epoch, metrics["loss"])
 plt.plot(history.epoch, metrics["val_loss"])
 plt.legend(["loss", "val_loss"])
-plt.savefig("training_loss.png", dpi=150, bbox_inches="tight")
+plt.savefig("training_loss_data_augmentation.png",
+            dpi=150, bbox_inches="tight")
 plt.close()
 
 plt.figure(figsize=(10, 5))
 plt.plot(history.epoch, metrics["accuracy"])
 plt.plot(history.epoch, metrics["val_accuracy"])
 plt.legend(["accuracy", "val_accuracy"])
-plt.savefig("training_accuracy.png", dpi=150, bbox_inches="tight")
+plt.savefig("training_accuracy_data_augmentation.png",
+            dpi=150, bbox_inches="tight")
 plt.close()
 
 test_audio = []
@@ -194,7 +257,8 @@ sns.heatmap(
 plt.xlabel("Prediction")
 plt.ylabel("Label")
 plt.title(f"Confusion Matrix\n Test Accuracy: {test_acc:.0%}")
-plt.savefig("confusion_matrix.png", dpi=150, bbox_inches="tight")
+plt.savefig("confusion_matrix_data_augmentation.png",
+            dpi=150, bbox_inches="tight")
 plt.show()
 plt.close()
 
