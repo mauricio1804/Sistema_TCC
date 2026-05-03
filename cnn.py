@@ -23,11 +23,24 @@ train = []
 test = []
 validation = []
 
-classes = ['kick', 'snare', 'toms']
+classes = {
+    "kick": 0, 
+    "snare": 1, 
+    "toms": 2
+}
+
+def duration_care(y, sr):
+    duration = lb.get_duration(y=y, sr=sr)
+                
+                if((duration < 2.0) or (duration > 2.0)):
+                    #preencher matriz e cortar matriz
+                    return 0   
+    return y, sr
+
 
 def melspectrogram(name_step, vector):
     
-    for classe in classes:
+    for classe, valor in classes.items():
         path = './Dataset/' + name_step + '/' + classe + '/'
         for audio in os.listdir(path):
             if audio.endswith('.wav'):
@@ -40,11 +53,13 @@ def melspectrogram(name_step, vector):
                 
                 # conversão para escala logarítmica
                 melspec_log = lb.power_to_db(melspec, ref=np.max)
-                vector.append((melspec_log, classe))
+                vector.append((melspec_log, valor))
                 
     return vector
 
+
 train = melspectrogram('train', train)
+exit()
 test = melspectrogram('test', test)
 validation = melspectrogram('validation', validation)
 
@@ -54,16 +69,19 @@ def prepare_to_dataset(melspc_vector):
     for i, j in melspc_vector:
         x.append(i)
         y.append(j)
-    x = np.array(x)
+    x = np.array(x, dtype=np.float32)
     x = x[..., np.newaxis]
-    y = np.array(y)
-    y = sk.preprocessing.LabelEncoder().fit_transform(y)
+    y = np.array(y, dtype=np.int32)
     return x, y
+
+    
 
 train_x, train_labels = prepare_to_dataset(train)
 validation_x, validation_labels = prepare_to_dataset(validation)
 test_x, test_labels = prepare_to_dataset(test)
 
+print(train_labels)
+exit()
 
 num_classes = len(classes)
 
