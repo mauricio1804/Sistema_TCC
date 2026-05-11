@@ -26,11 +26,11 @@ def delete_files(folder):
 
 
 def verification(classe):
-    if count_wavs(os.path.join(dir_train, classe)) == 0:
+    if count_wavs(os.path.join(dir_train, classe)) != 28:
         return False
-    if count_wavs(os.path.join(dir_validation, classe)) == 0:
+    if count_wavs(os.path.join(dir_validation, classe)) != 6:
         return False
-    if count_wavs(os.path.join(dir_test, classe)) == 0:
+    if count_wavs(os.path.join(dir_test, classe)) != 6:
         return False
     return True
 
@@ -75,17 +75,26 @@ def estratificacao(arquivos, classe):
         division_datasets(arquivos, classe)
 
         print(" Concluído:")
+        len_train = count_wavs(os.path.join(dir_train, classe))
+        len_validation = count_wavs(os.path.join(dir_validation, classe))
+        len_test = count_wavs(os.path.join(dir_test, classe))
+        print(f"Train: {count_wavs(os.path.join(dir_train, classe))}")
+        print(
+            f"Validation: {count_wavs(os.path.join(dir_validation, classe))}")
+        print(f"Test: {count_wavs(os.path.join(dir_test, classe))}")
+        return len_train + len_validation + len_test
+
+    else:
+        print(f"\n Estratificação já realizada para {classe}")
+        len_train = count_wavs(os.path.join(dir_train, classe))
+        len_validation = count_wavs(os.path.join(dir_validation, classe))
+        len_test = count_wavs(os.path.join(dir_test, classe))
         print(f"Train: {count_wavs(os.path.join(dir_train, classe))}")
         print(
             f"Validation: {count_wavs(os.path.join(dir_validation, classe))}")
         print(f"Test: {count_wavs(os.path.join(dir_test, classe))}")
 
-    else:
-        print(f"\n Estratificação já realizada para {classe}")
-        print(f"Train: {count_wavs(os.path.join(dir_train, classe))}")
-        print(
-            f"Validation: {count_wavs(os.path.join(dir_validation, classe))}")
-        print(f"Test: {count_wavs(os.path.join(dir_test, classe))}")
+        return len_train + len_validation + len_test
 
 
 dados = {
@@ -94,5 +103,10 @@ dados = {
     'toms': list_wavs(os.path.join(dataset_dir, 'toms'))
 }
 
+soma = 0
+
 for classe, arquivos in dados.items():
-    estratificacao(arquivos, classe)
+    i = estratificacao(arquivos, classe)
+    soma += i
+
+print(f"\nTotal de arquivos processados: {soma}")

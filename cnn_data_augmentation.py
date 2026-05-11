@@ -45,21 +45,25 @@ def data_augmentation(name_step):
     vector = []
     for classe, valor in classes.items():
         path = "./Dataset/" + name_step + "/" + classe + "/"
-        for audio in os.listdir(path):
+        for audio in sorted(os.listdir(path)):
             if audio.endswith(".wav"):
                 # carregamento do áudio
                 y, sr = lb.load(os.path.join(path, audio), sr=sample_rate)
 
                 # modificação do áudio para o data augmentation
-                data_augmented.append((lb.effects.pitch_shift(
-                    y, sr=sr, n_steps=np.random.uniform(-2, 2)), valor))
-
+                y = lb.effects.pitch_shift(
+                    y, sr=sample_rate, n_steps=np.random.choice([-1.0, -0.5, 0.5, 1.0]))
+                
+                # Tratamento para normalização da duração do áudio em 2 segundos (44100*2 amostras)
                 y = duration_care(y)
 
-    for i, j in data_augmented:
+                # Tupla com os dados de áudio modificados e o valor da classe correspondente
+                data_augmented.append((y, valor))
+
+    for audio_augment, rotulo in data_augmented:
         melspec = lb.feature.melspectrogram(
-            y=i,
-            sr=sr,
+            y=audio_augment,
+            sr=sample_rate,
             n_mels=n_mels,
             fmax=fmax,
             n_fft=n_fft,
@@ -71,7 +75,7 @@ def data_augmentation(name_step):
         melspec_log = lb.power_to_db(melspec, ref=np.max)
 
         # retorno da tupla (espectrograma de Mel, valor da classe)
-        vector.append((melspec_log, j))
+        vector.append((melspec_log, rotulo))
 
     return vector
 
@@ -92,7 +96,7 @@ def melspectrogram(name_step, vector):
                 # cálculo do espectrograma de Mel
                 melspec = lb.feature.melspectrogram(
                     y=y,
-                    sr=sr,
+                    sr=sample_rate,
                     n_mels=n_mels,
                     fmax=fmax,
                     n_fft=n_fft,
@@ -110,26 +114,10 @@ def melspectrogram(name_step, vector):
 
 
 train = melspectrogram("train", train)
-print(len(train))
 
 data_aug = data_augmentation("train")
-print(len(data_aug))
-
-print(np.array_equal(
-    train[0][0],
-    data_aug[0][0]
-))
-
-print(
-    np.array_equal(
-        train[0][1],
-        data_aug[0][1]
-    ))
 
 train.extend(data_aug)
-
-print(len(train))
-
 
 test = melspectrogram("test", test)
 validation = melspectrogram("validation", validation)
