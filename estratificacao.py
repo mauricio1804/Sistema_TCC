@@ -12,7 +12,11 @@ dir_test = './Dataset/test'
 
 
 def list_wavs(path):
-    return [f for f in os.listdir(path) if f.endswith('.wav')]
+
+    if not os.path.exists(path):
+        return []
+
+    return [f for f in os.listdir(path) if f.lower().endswith('.wav')]
 
 
 def count_wavs(path):
@@ -36,12 +40,17 @@ def verification(classe):
 
 
 def division_datasets(arquivos, classe):
+
     train_files, temp = sk.model_selection.train_test_split(
-        arquivos, test_size=0.3, random_state=42
+        arquivos,
+        test_size=0.3,
+        random_state=42
     )
 
     val_files, test_files = sk.model_selection.train_test_split(
-        temp, test_size=0.5, random_state=42
+        temp,
+        test_size=0.5,
+        random_state=42
     )
 
     for arquivo in train_files:
@@ -62,6 +71,37 @@ def division_datasets(arquivos, classe):
             os.path.join(dir_test, classe)
         )
 
+    return train_files, val_files, test_files
+
+
+def check_duplicates(train_files, val_files, test_files):
+
+    train_set = set(train_files)
+    val_set = set(val_files)
+    test_set = set(test_files)
+
+    train_val = train_set.intersection(val_set)
+    train_test = train_set.intersection(test_set)
+    val_test = val_set.intersection(test_set)
+
+    if train_val or train_test or val_test:
+
+        print("\nArquivos duplicados encontrados!")
+
+        if train_val:
+            print(f"Duplicados entre train e validation: {train_val}")
+
+        if train_test:
+            print(f"Duplicados entre train e test: {train_test}")
+
+        if val_test:
+            print(f"Duplicados entre validation e test: {val_test}")
+
+        return False
+
+    print("\nNenhum arquivo duplicado encontrado.")
+    return True
+
 
 def estratificacao(arquivos, classe):
     if not verification(classe):
@@ -72,7 +112,10 @@ def estratificacao(arquivos, classe):
         delete_files(os.path.join(dir_validation, classe))
         delete_files(os.path.join(dir_test, classe))
 
-        division_datasets(arquivos, classe)
+        train_files, val_files, test_files = division_datasets(
+            arquivos, classe)
+
+        check_duplicates(train_files, val_files, test_files)
 
         print(" Concluído:")
         len_train = count_wavs(os.path.join(dir_train, classe))

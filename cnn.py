@@ -159,15 +159,31 @@ metrics = history.history
 plt.figure(figsize=(10, 5))
 plt.plot(history.epoch, metrics["loss"])
 plt.plot(history.epoch, metrics["val_loss"])
-plt.legend(["loss", "val_loss"])
-plt.savefig("training_loss.png", dpi=150, bbox_inches="tight")
+plt.xlabel("Épocas")
+plt.ylabel("Loss")
+plt.title("Loss de Treinamento e Validação")
+plt.legend(["Treinamento", "Validação"])
+plt.grid(True)
+plt.savefig(
+    "training_loss.png",
+    dpi=150,
+    bbox_inches="tight"
+)
 plt.close()
 
 plt.figure(figsize=(10, 5))
 plt.plot(history.epoch, metrics["accuracy"])
 plt.plot(history.epoch, metrics["val_accuracy"])
-plt.legend(["accuracy", "val_accuracy"])
-plt.savefig("training_accuracy.png", dpi=150, bbox_inches="tight")
+plt.xlabel("Épocas")
+plt.ylabel("Accuracy")
+plt.title("Accuracy de Treinamento e Validação")
+plt.legend(["Treinamento", "Validação"])
+plt.grid(True)
+plt.savefig(
+    "training_accuracy.png",
+    dpi=150,
+    bbox_inches="tight"
+)
 plt.close()
 
 test_audio = []
