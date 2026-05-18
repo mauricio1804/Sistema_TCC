@@ -129,6 +129,11 @@ def estratificacao(arquivos, classe):
 
     else:
         print(f"\n Estratificação já realizada para {classe}")
+        train_files = list_wavs(os.path.join(dir_train, classe))
+        val_files = list_wavs(os.path.join(dir_validation, classe))
+        test_files = list_wavs(os.path.join(dir_test, classe))
+
+        check_duplicates(train_files, val_files, test_files)
         len_train = count_wavs(os.path.join(dir_train, classe))
         len_validation = count_wavs(os.path.join(dir_validation, classe))
         len_test = count_wavs(os.path.join(dir_test, classe))

@@ -6,6 +6,7 @@ import librosa as lb
 import os
 import sklearn as sk
 import seaborn as sns
+import pandas as pd
 
 
 seed = 42
@@ -42,7 +43,7 @@ def melspectrogram(name_step, vector):
 
     for classe, valor in classes.items():
         path = "./Dataset/" + name_step + "/" + classe + "/"
-        for audio in os.listdir(path):
+        for audio in sorted(os.listdir(path)):
             if audio.endswith(".wav"):
 
                # carregamento do áudio
@@ -203,9 +204,11 @@ print(f"Test Accuracy: {test_acc:.0%}")
 
 confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
 
+class_names = list(classes.keys())
+
 plt.figure(figsize=(10, 8))
 sns.heatmap(
-    confusion_mtx, xticklabels=classes, yticklabels=classes, annot=True, fmt="d"
+    confusion_mtx, xticklabels=class_names, yticklabels=class_names, annot=True, fmt="d"
 )
 plt.xlabel("Prediction")
 plt.ylabel("Label")
@@ -214,4 +217,11 @@ plt.savefig("confusion_matrix.png", dpi=150, bbox_inches="tight")
 plt.show()
 plt.close()
 
-print(sk.metrics.classification_report(y_true, y_pred, target_names=classes))
+results = sk.metrics.classification_report(
+    y_true, y_pred, target_names=class_names, output_dict=True)
+
+df = pd.DataFrame(results).transpose()
+
+df.to_csv("classification_report.csv", index=True)
+
+print(df)

@@ -21,8 +21,13 @@ def audio_info(path):
 
 taxa_amostragem, duracao = audio_info(dataset_dir)
 
-if (np.mean(duracao) == 2 and np.min(duracao) == 2 and np.max(duracao) == 2 and len(duracao) == 120):
+verificacao_duracao = (np.allclose(duracao, 2.0) and len(duracao) == 120)
+
+verificacao_taxa_amostragem = (np.all(taxa_amostragem) == 44100 and len(taxa_amostragem) == 120)
+
+if (verificacao_duracao):
     print("Todos os 120 arquivos de áudio têm a duração correta de 2 segundos.")
+    print('valores únicos da duração: ', np.unique(duracao))
 else:
     print("Nem todos os arquivos de áudio têm a duração correta de 2 segundos. Verifique os dados.")
     print("Média duração: ", np.mean(duracao))
@@ -32,8 +37,9 @@ else:
     print("Quantidade de arquivos lidos: ", len(duracao))
 
 
-if (np.mean(taxa_amostragem) == 44100 and np.min(taxa_amostragem) == 44100 and np.max(taxa_amostragem) == 44100 and len(taxa_amostragem) == 120):
+if (verificacao_taxa_amostragem):
     print("Todos os 120 arquivos de áudio têm a taxa de amostragem correta de 44100 Hz.")
+    print("Valores únicos da taxa de amostragem: ", np.unique(taxa_amostragem))
 else:
     print("Nem todos os arquivos de áudio têm a taxa de amostragem correta de 44100 Hz. Verifique os dados.")
     print("\nMédia da taxa de amostragem: ", np.mean(taxa_amostragem))
