@@ -26,7 +26,7 @@ duracao = np.array(duracao)
 
 verificacao_duracao = (np.allclose(duracao, 2.0) and len(duracao) == 120)
 
-verificacao_taxa_amostragem = (np.all(taxa_amostragem) == 44100 and len(taxa_amostragem) == 120)
+verificacao_taxa_amostragem = (np.all(taxa_amostragem == 44100) and len(taxa_amostragem) == 120)
 
 if (verificacao_duracao):
     print("Todos os 120 arquivos de áudio têm a duração correta de 2 segundos.")
