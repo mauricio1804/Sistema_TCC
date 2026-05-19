@@ -85,7 +85,7 @@ def melspectrogram(name_step, vector):
 
     for classe, valor in classes.items():
         path = "./Dataset/" + name_step + "/" + classe + "/"
-        for audio in os.listdir(path):
+        for audio in sorted(os.listdir(path)):
             if audio.endswith(".wav"):
 
                # carregamento do áudio

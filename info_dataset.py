@@ -21,6 +21,9 @@ def audio_info(path):
 
 taxa_amostragem, duracao = audio_info(dataset_dir)
 
+taxa_amostragem = np.array(taxa_amostragem)
+duracao = np.array(duracao)
+
 verificacao_duracao = (np.allclose(duracao, 2.0) and len(duracao) == 120)
 
 verificacao_taxa_amostragem = (np.all(taxa_amostragem) == 44100 and len(taxa_amostragem) == 120)
