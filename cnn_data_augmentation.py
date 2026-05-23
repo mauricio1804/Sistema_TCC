@@ -9,10 +9,6 @@ import seaborn as sns
 import pandas as pd
 
 
-seed = 42
-tf.random.set_seed(seed)
-np.random.seed(seed)
-
 batch_size = 32
 n_mels = 128
 n_fft = 2048
@@ -40,10 +36,10 @@ def duration_care(y):
 
     return y
 
-
 def data_augmentation(name_step):
     data_augmented = []
     vector = []
+
     for classe, valor in classes.items():
         path = "./Dataset/" + name_step + "/" + classe + "/"
         for audio in sorted(os.listdir(path)):
@@ -51,15 +47,32 @@ def data_augmentation(name_step):
                 # carregamento do áudio
                 y, sr = lb.load(os.path.join(path, audio), sr=sample_rate)
 
-                # modificação do áudio para o data augmentation
-                y = lb.effects.pitch_shift(
-                    y, sr=sample_rate, n_steps=np.random.choice([-1.0, -0.5, 0.5, 1.0]))
-                
-                # Tratamento para normalização da duração do áudio em 2 segundos (44100*2 amostras)
-                y = duration_care(y)
+                if (cenary != "1"):
+                    if (cenary == "3"):
+                        steps = np.random.choice(
+                            [-1.0, -0.5, 0.5, 1.0], replace=False, size=2)
+                        for step in steps:
+                            # modificação do áudio para o data augmentation
+                            y_aug = lb.effects.pitch_shift(
+                                y, sr=sample_rate, n_steps=float(step))
 
-                # Tupla com os dados de áudio modificados e o valor da classe correspondente
-                data_augmented.append((y, valor))
+                            # Tratamento para normalização da duração do áudio em 2 segundos (44100*2 amostras)
+                            y_aug = duration_care(y_aug)
+
+                            # Tupla com os dados de áudio modificados e o valor da classe correspondente
+                            data_augmented.append((y_aug, valor))
+                    else:      
+                        step = np.random.choice(
+                            [-1.0, -0.5, 0.5, 1.0])
+                        # modificação do áudio para o data augmentation
+                        y_aug = lb.effects.pitch_shift(
+                            y, sr=sample_rate, n_steps=float(step))
+
+                        # Tratamento para normalização da duração do áudio em 2 segundos (44100*2 amostras)
+                        y_aug = duration_care(y_aug)
+
+                        # Tupla com os dados de áudio modificados e o valor da classe correspondente
+                        data_augmented.append((y_aug, valor))
 
     for audio_augment, rotulo in data_augmented:
         melspec = lb.feature.melspectrogram(
@@ -114,16 +127,6 @@ def melspectrogram(name_step, vector):
     return vector
 
 
-train = melspectrogram("train", train)
-
-data_aug = data_augmentation("train")
-
-train.extend(data_aug)
-
-test = melspectrogram("test", test)
-validation = melspectrogram("validation", validation)
-
-
 def prepare_to_dataset(melspc_vector):
     x = []
     y = []
@@ -136,144 +139,189 @@ def prepare_to_dataset(melspc_vector):
     return x, y
 
 
-train_x, train_labels = prepare_to_dataset(train)
-print(len(train_x), len(train_labels))
-validation_x, validation_labels = prepare_to_dataset(validation)
-test_x, test_labels = prepare_to_dataset(test)
-
-num_classes = len(classes)
-
-AUTOTUNE = tf.data.AUTOTUNE
-
-train = tf.data.Dataset.from_tensor_slices((train_x, train_labels))
-train = (
-    train.shuffle(buffer_size=len(train_x), seed=seed)
-    .batch(batch_size)
-    .cache()
-    .prefetch(AUTOTUNE)
-)
-validation = tf.data.Dataset.from_tensor_slices(
-    (validation_x, validation_labels))
-validation = validation.batch(batch_size).cache().prefetch(AUTOTUNE)
-test = tf.data.Dataset.from_tensor_slices((test_x, test_labels))
-test = test.batch(batch_size).cache().prefetch(AUTOTUNE)
-
-print(train.element_spec)
+def menu():
+    print("Escolha o cenário de data augmentation para ser executado 3 vezes:")
+    print("1. Sem data augmentation (1x)")
+    print("2. Data augmentation com 1 variação (2x)")
+    print("3. Data augmentation com 2 variações (3x)")
+    choice = input("Digite o número correspondente à sua escolha: ")
+    return choice
 
 
-norm_layer = layers.Normalization()
-norm_layer.adapt(train_x)
-model = models.Sequential(
-    [
-        layers.Input(shape=(train_x.shape[1:])),
-        norm_layer,
-        layers.Conv2D(16, 3, activation="relu"),
-        layers.Conv2D(32, 3, activation="relu"),
-        layers.MaxPooling2D(),
-        layers.Dropout(0.25),
-        layers.Flatten(),
-        layers.Dense(128, activation="relu"),
-        layers.Dropout(0.5),
-        layers.Dense(num_classes),
-    ]
-)
+cenary = menu()
 
-model.summary()
+cases_seeds = [42, 123, 2024]
 
-model.compile(
-    optimizer="adam",
-    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metrics=[
-        tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
-    ],
-)
+for i in range(3):
+    train = []
+    test = []
+    validation = []
 
-epochs = 10
-history = model.fit(
-    train,
-    validation_data=validation,
-    epochs=epochs,
-    callbacks=[
-        tf.keras.callbacks.EarlyStopping(
-            verbose=1, patience=2, restore_best_weights=True
-        )
-    ],
-)
+    seed = cases_seeds[i]
+    tf.random.set_seed(seed)
+    np.random.seed(seed)
 
-accuracy = history.history["accuracy"]
-val_accuracy = history.history["val_accuracy"]
-loss = history.history["loss"]
-val_loss = history.history["val_loss"]
-metrics = history.history
+    train = melspectrogram("train", train)
 
-plt.figure(figsize=(10, 5))
-plt.plot(history.epoch, metrics["loss"])
-plt.plot(history.epoch, metrics["val_loss"])
-plt.xlabel("Épocas")
-plt.ylabel("Loss")
-plt.title("Loss de Treinamento e Validação com Data Augmentation")
-plt.legend(["Treinamento", "Validação"])
-plt.grid(True)
-plt.savefig(
-    "training_loss_data_augmentation.png",
-    dpi=150,
-    bbox_inches="tight"
-)
-plt.close()
+    if (cenary != "1"):
+        data_aug = data_augmentation("train")
+        train.extend(data_aug)
+        print(f"Quantidade de amostras com data pitch_shift: {len(data_aug)}")
 
-plt.figure(figsize=(10, 5))
-plt.plot(history.epoch, metrics["accuracy"])
-plt.plot(history.epoch, metrics["val_accuracy"])
-plt.xlabel("Épocas")
-plt.ylabel("Accuracy")
-plt.title("Accuracy de Treinamento e Validação com Data Augmentation")
-plt.legend(["Treinamento", "Validação"])
-plt.grid(True)
-plt.savefig(
-    "training_accuracy_data_augmentation.png",
-    dpi=150,
-    bbox_inches="tight"
-)
-plt.close()
+    coluna = [item[0].tobytes() for item in train]
+    if (coluna != []):
+        print(
+            f"Quantidade de amostras únicas com data augmentation: {len(set(coluna))}")
+    print(f"Quantidade de amostras de treinamento: {len(train)}")
+    test = melspectrogram("test", test)
+    validation = melspectrogram("validation", validation)
 
-test_audio = []
-test_labels = []
 
-for matriz, labels in test:
-    test_audio.append(matriz)
-    test_labels.append(labels)
-test_audio = np.concatenate(test_audio, axis=0)
-test_labels = np.concatenate(test_labels, axis=0)
+    train_x, train_labels = prepare_to_dataset(train)
+    validation_x, validation_labels = prepare_to_dataset(validation)
+    test_x, test_labels = prepare_to_dataset(test)
 
-y_pred = np.argmax(model.predict(test_audio), axis=1)
-y_true = test_labels
+    num_classes = len(classes)
 
-test_acc = sum(y_pred == y_true) / len(y_true)
-print(f"Test Accuracy: {test_acc:.0%}")
+    AUTOTUNE = tf.data.AUTOTUNE
 
-confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
+    train = tf.data.Dataset.from_tensor_slices((train_x, train_labels))
+    train = (
+        train.shuffle(buffer_size=len(train_x), seed=seed)
+        .batch(batch_size)
+        .cache()
+        .prefetch(AUTOTUNE)
+    )
+    validation = tf.data.Dataset.from_tensor_slices(
+        (validation_x, validation_labels))
+    validation = validation.batch(batch_size).cache().prefetch(AUTOTUNE)
+    test = tf.data.Dataset.from_tensor_slices((test_x, test_labels))
+    test = test.batch(batch_size).cache().prefetch(AUTOTUNE)
 
-class_names = list(classes.keys())
+    print(train.element_spec)
 
-plt.figure(figsize=(10, 8))
-sns.heatmap(
-    confusion_mtx, xticklabels=class_names, yticklabels=class_names, annot=True, fmt="d"
-)
-plt.xlabel("Prediction")
-plt.ylabel("Label")
-plt.title(f"Confusion Matrix\n Test Accuracy: {test_acc:.0%}")
-plt.savefig("confusion_matrix_data_augmentation.png",
-            dpi=150, bbox_inches="tight")
-plt.show()
-plt.close()
 
-results = sk.metrics.classification_report(
-    y_true, y_pred, target_names=class_names, output_dict=True)
+    norm_layer = layers.Normalization()
+    norm_layer.adapt(train_x)
+    model = models.Sequential(
+        [
+            layers.Input(shape=(train_x.shape[1:])),
+            norm_layer,
+            layers.Conv2D(16, 3, activation="relu"),
+            layers.Conv2D(32, 3, activation="relu"),
+            layers.MaxPooling2D(),
+            layers.Dropout(0.25),
+            layers.Flatten(),
+            layers.Dense(128, activation="relu"),
+            layers.Dropout(0.5),
+            layers.Dense(num_classes),
+        ]
+    )
 
-df = pd.DataFrame(results).transpose()
+    model.summary()
 
-df.to_csv("classification_report_data_augmentation.csv", index=True)
+    model.compile(
+        optimizer="adam",
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=[
+            tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
+        ],
+    )
 
-print(df)
+    epochs = 10
+    history = model.fit(
+        train,
+        validation_data=validation,
+        epochs=epochs,
+        callbacks=[
+            tf.keras.callbacks.EarlyStopping(
+                verbose=1, patience=2, restore_best_weights=True
+            )
+        ],
+    )
+
+    accuracy = history.history["accuracy"]
+    val_accuracy = history.history["val_accuracy"]
+    loss = history.history["loss"]
+    val_loss = history.history["val_loss"]
+    metrics = history.history
+    
+    if (cenary == "1"):
+        type_cenary = "Sem_data_augmentation(1x)"
+    elif (cenary == "2"):
+        type_cenary = "Com_Data_augmentation(2x)"
+    elif (cenary == "3"):
+        type_cenary = "Com_Data_augmentation(3x)"
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(history.epoch, metrics["loss"])
+    plt.plot(history.epoch, metrics["val_loss"])
+    plt.xlabel("Épocas")
+    plt.ylabel("Loss")
+    plt.title(f"Loss de Treinamento e Validação {type_cenary} execução {i+1}")
+    plt.legend(["Treinamento", "Validação"])
+    plt.grid(True)
+    plt.savefig(
+        f"./Resultados/cenario{cenary}/training_Loss_{type_cenary}_execucao{1+1}.png",
+        dpi=150,
+        bbox_inches="tight"
+    )
+    plt.close()
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(history.epoch, metrics["accuracy"])
+    plt.plot(history.epoch, metrics["val_accuracy"])
+    plt.xlabel("Épocas")
+    plt.ylabel("Accuracy")
+    plt.title(f"Accuracy de Treinamento e Validação {type_cenary} execução {i+1}")
+    plt.legend(["Treinamento", "Validação"])
+    plt.grid(True)
+    plt.savefig(
+        f"./Resultados/cenario{cenary}/training_accuracy_{type_cenary}_execucao{i+1}.png",
+        dpi=150,
+        bbox_inches="tight"
+    )
+    plt.close()
+
+    test_audio = []
+    test_labels = []
+
+    for matriz, labels in test:
+        test_audio.append(matriz)
+        test_labels.append(labels)
+    test_audio = np.concatenate(test_audio, axis=0)
+    test_labels = np.concatenate(test_labels, axis=0)
+
+    y_pred = np.argmax(model.predict(test_audio), axis=1)
+    y_true = test_labels
+
+    test_acc = sum(y_pred == y_true) / len(y_true)
+    print(f"Test Accuracy: {test_acc:.0%}")
+
+    confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
+
+    class_names = list(classes.keys())
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(
+        confusion_mtx, xticklabels=class_names, yticklabels=class_names, annot=True, fmt="d"
+    )
+    plt.xlabel("Prediction")
+    plt.ylabel("Label")
+    plt.title(f"Confusion Matrix\n Test Accuracy: {test_acc:.0%}")
+    plt.savefig(f"./Resultados/cenario{cenary}/confusion_matrix_{type_cenary}_execucao{i+1}.png",
+                dpi=150, bbox_inches="tight")
+    plt.show()
+    plt.close()
+
+    results = sk.metrics.classification_report(
+        y_true, y_pred, target_names=class_names, output_dict=True)
+
+    df = pd.DataFrame(results).transpose()
+
+    df.to_csv(
+        f"./Resultados/cenario{cenary}/classification_report_{type_cenary}_execucao{i+1}.csv", index=True)
+    print(df)
+
 
 
