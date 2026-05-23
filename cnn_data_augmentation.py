@@ -262,7 +262,7 @@ for i in range(3):
     plt.legend(["Treinamento", "Validação"])
     plt.grid(True)
     plt.savefig(
-        f"./Resultados/cenario{cenary}/training_Loss_{type_cenary}_execucao{1+1}.png",
+        f"./Resultados/cenario{cenary}/training_Loss_{type_cenary}_execucao{i+1}.png",
         dpi=150,
         bbox_inches="tight"
     )
